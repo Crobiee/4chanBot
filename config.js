@@ -7,7 +7,8 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 // Default state
 let state = {
     keywords: [],
-    admins: []
+    admins: [],
+    boards: ['gif']
 };
 
 // Load state
@@ -17,11 +18,12 @@ if (fs.existsSync(DATA_FILE)) {
         const loaded = JSON.parse(raw);
         state.keywords = loaded.keywords || [];
         state.admins = loaded.admins || [];
+        state.boards = loaded.boards || ['gif'];
     } catch (err) {
         console.error('Error loading data.json:', err);
     }
 } else {
-    // Attempt to load from legacy .env if data.json doesn't exist
+    // Migration: Attempt to load from legacy .env
     if (process.env.KEYWORDS) {
         state.keywords = process.env.KEYWORDS.split(',').map(k => k.trim());
         saveState();
@@ -41,9 +43,9 @@ module.exports = {
     discordChannelId: process.env.DISCORD_CHANNEL_ID,
     discordClientId: process.env.DISCORD_CLIENT_ID,
     discordOwnerId: process.env.DISCORD_OWNER_ID,
-    fourChanBoard: 'gif',
 
     get keywords() { return state.keywords; },
+    get boards() { return state.boards; },
 
     addKeyword(keyword) {
         if (!state.keywords.includes(keyword)) {
@@ -67,6 +69,25 @@ module.exports = {
     addAdmin(userId) {
         if (!state.admins.includes(userId)) {
             state.admins.push(userId);
+            saveState();
+            return true;
+        }
+        return false;
+    },
+
+    addBoard(board) {
+        if (!state.boards.includes(board)) {
+            state.boards.push(board);
+            saveState();
+            return true;
+        }
+        return false;
+    },
+
+    removeBoard(board) {
+        const initialLen = state.boards.length;
+        state.boards = state.boards.filter(b => b !== board);
+        if (state.boards.length !== initialLen) {
             saveState();
             return true;
         }

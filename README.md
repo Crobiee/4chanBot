@@ -1,13 +1,14 @@
-# ThugBot
+# 4chanbot
 
-A Discord bot that monitors the 4chan `/gif/` board for threads containing specific keywords, then downloads and posts the videos (WebM, MP4, GIF) to a specified Discord channel.
+A Discord bot that monitors 4chan boards (like `/gif/`, `/w/`, etc.) for threads containing specific keywords, then downloads and posts videos (WebM, MP4, GIF) to a specified Discord channel.
 
 ## Features
 
--   **Keyword Monitoring**: Scans `/gif/` catalog for user-defined keywords.
+-   **Multi-Board Support**: Monitor multiple boards simultaneously.
+-   **Keyword Monitoring**: Scans catalogs for user-defined keywords.
 -   **Media Mirroring**: Downloads video files and uploads them to Discord.
 -   **Duplicate Prevention**: Tracks seen posts `history.json` to avoid reposts.
--   **Slash Commands**: Manage keywords and admins directly from Discord.
+-   **Slash Commands**: Manage keywords, boards, and admins directly from Discord.
 -   **Dockerized**: Easy deployment with Docker Compose.
 
 ## Setup
@@ -49,12 +50,11 @@ docker-compose up -d --build
 
 ## Usage
 
-Use the `/thug` slash command to manage the bot:
+Use the `/4chan` slash command to manage the bot:
 
--   `/thug add <keyword>`: Add a new keyword to monitor.
--   `/thug remove <keyword>`: Stop monitoring a keyword.
--   `/thug list`: Show all currently monitored keywords.
--   `/thug addadmin <userid>`: Authorize another user to manage the bot.
+-   `/4chan add <keyword>`: Add a new keyword.
+-   `/4chan list`: List keywords and boards.
+-   `/4chan board add <board>`: Add a board to monitor (e.g. `w`, `wg`, `gif`).
 
 ## Permissions
 

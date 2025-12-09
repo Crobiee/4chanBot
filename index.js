@@ -6,25 +6,25 @@ const commandModule = require('./commands');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
-async function processThread(threadId, channel) {
-    const posts = await fourchan.fetchThread(threadId);
+async function processThread(board, threadId, channel) {
+    const posts = await fourchan.fetchThread(board, threadId);
     if (!posts) return;
 
     for (const post of posts) {
         if (post.tim && post.ext && (post.ext === '.webm' || post.ext === '.mp4' || post.ext === '.gif')) {
-            const uniqueId = `${threadId}-${post.no}`;
+            const uniqueId = `${board}-${threadId}-${post.no}`;
             if (utils.hasSeen(uniqueId)) continue; // Skip duplicates
 
-            const fileUrl = `https://i.4cdn.org/${config.fourChanBoard}/${post.tim}${post.ext}`;
-            console.log(`Found new video: ${fileUrl}`);
+            const fileUrl = `https://i.4cdn.org/${board}/${post.tim}${post.ext}`;
+            console.log(`[${board}] Found new video: ${fileUrl}`);
 
             const fileData = await utils.downloadFile(fileUrl);
             if (fileData) {
                 try {
                     const attachment = new AttachmentBuilder(fileData, { name: `${post.tim}${post.ext}` });
-                    await channel.send({ content: `Source: <https://boards.4chan.org/${config.fourChanBoard}/thread/${threadId}#p${post.no}>`, files: [attachment] });
+                    await channel.send({ content: `Source: <https://boards.4chan.org/${board}/thread/${threadId}#p${post.no}>`, files: [attachment] });
                     utils.markSeen(uniqueId);
-                    console.log(`Posted ${post.tim}${post.ext} to Discord.`);
+                    console.log(`[${board}] Posted ${post.tim}${post.ext} to Discord.`);
                 } catch (discordErr) {
                     console.error('Error posting to Discord:', discordErr.message);
                 }
@@ -42,30 +42,40 @@ async function runBotLoop() {
         return;
     }
 
-    // Dynamic keyword fetch
     const currentKeywords = config.keywords;
     if (currentKeywords.length === 0) {
         console.log('No keywords set. Waiting...');
         return;
     }
 
-    console.log('Fetching catalog...');
-    const catalog = await fourchan.fetchCatalog();
-
-    const interestingThreads = [];
-    for (const page of catalog) {
-        for (const thread of page.threads) {
-            if (fourchan.isInterestingThread(thread, currentKeywords)) {
-                interestingThreads.push(thread.no);
-            }
-        }
+    const currentBoards = config.boards;
+    if (currentBoards.length === 0) {
+        console.log('No boards set. Defaulting to gif.');
+        config.addBoard('gif');
     }
 
-    console.log(`Found ${interestingThreads.length} interesting threads.`);
+    for (const board of currentBoards) {
+        console.log(`Fetching catalog for /${board}/...`);
+        const catalog = await fourchan.fetchCatalog(board);
 
-    for (const threadId of interestingThreads) {
-        await processThread(threadId, channel);
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        const interestingThreads = [];
+        for (const page of catalog) {
+            for (const thread of page.threads) {
+                if (fourchan.isInterestingThread(thread, currentKeywords)) {
+                    interestingThreads.push(thread.no);
+                }
+            }
+        }
+
+        console.log(`[${board}] Found ${interestingThreads.length} interesting threads.`);
+
+        for (const threadId of interestingThreads) {
+            await processThread(board, threadId, channel);
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+
+        // Slight pause between boards
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
 }
 

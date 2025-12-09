@@ -1,9 +1,9 @@
 const { SlashCommandBuilder } = require('discord.js');
 const config = require('./config');
 
-const thugCommand = new SlashCommandBuilder()
-    .setName('thug')
-    .setDescription('Manage ThugBot configuration')
+const fourchanCommand = new SlashCommandBuilder()
+    .setName('4chan')
+    .setDescription('Manage 4chanbot configuration')
     .addSubcommand(subcommand =>
         subcommand
             .setName('add')
@@ -17,19 +17,52 @@ const thugCommand = new SlashCommandBuilder()
     .addSubcommand(subcommand =>
         subcommand
             .setName('list')
-            .setDescription('List all monitored keywords'))
+            .setDescription('List all monitored keywords and boards'))
     .addSubcommand(subcommand =>
         subcommand
             .setName('addadmin')
             .setDescription('Add a new bot admin by User ID')
-            .addStringOption(option => option.setName('userid').setDescription('The Discord User ID').setRequired(true)));
+            .addStringOption(option => option.setName('userid').setDescription('The Discord User ID').setRequired(true)))
+    .addSubcommandGroup(group =>
+        group
+            .setName('board')
+            .setDescription('Manage monitored boards')
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('add')
+                    .setDescription('Add a board (e.g., gif, w)')
+                    .addStringOption(option => option.setName('board').setDescription('Board name').setRequired(true)))
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('remove')
+                    .setDescription('Remove a monitored board')
+                    .addStringOption(option => option.setName('board').setDescription('Board name').setRequired(true))));
 
-async function handleThugCommand(interaction) {
+async function handleFourchanCommand(interaction) {
     if (!config.isAdmin(interaction.user.id)) {
         return interaction.reply({ content: 'You are not authorized to use this command.', ephemeral: true });
     }
 
     const subcommand = interaction.options.getSubcommand();
+    const group = interaction.options.getSubcommandGroup(); // 'board' or null
+
+    if (group === 'board') {
+        const board = interaction.options.getString('board');
+        if (subcommand === 'add') {
+            if (config.addBoard(board)) {
+                await interaction.reply({ content: `Added board: **/${board}/**`, ephemeral: true });
+            } else {
+                await interaction.reply({ content: `Board **/${board}/** is already being monitored.`, ephemeral: true });
+            }
+        } else if (subcommand === 'remove') {
+            if (config.removeBoard(board)) {
+                await interaction.reply({ content: `Removed board: **/${board}/**`, ephemeral: true });
+            } else {
+                await interaction.reply({ content: `Board **/${board}/** was not found.`, ephemeral: true });
+            }
+        }
+        return;
+    }
 
     switch (subcommand) {
         case 'add': {
@@ -52,8 +85,11 @@ async function handleThugCommand(interaction) {
         }
         case 'list': {
             const keywords = config.keywords;
-            const listStr = keywords.length > 0 ? keywords.join(', ') : 'No keywords set.';
-            await interaction.reply({ content: `**Current Keywords:** ${listStr}`, ephemeral: true });
+            const boards = config.boards;
+            const kwList = keywords.length > 0 ? keywords.join(', ') : 'None';
+            const bdList = boards.length > 0 ? boards.join(', ') : 'None';
+
+            await interaction.reply({ content: `**Keywords:** ${kwList}\n**Boards:** ${bdList}`, ephemeral: true });
             break;
         }
         case 'addadmin': {
@@ -71,8 +107,8 @@ async function handleThugCommand(interaction) {
 }
 
 module.exports = {
-    commands: [thugCommand], // Export as array for registration
+    commands: [fourchanCommand],
     handlers: {
-        thug: handleThugCommand
+        '4chan': handleFourchanCommand
     }
 };

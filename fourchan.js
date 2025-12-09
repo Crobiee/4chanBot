@@ -3,25 +3,25 @@ const config = require('./config');
 
 const BASE_URL = 'https://a.4cdn.org';
 
-async function fetchCatalog() {
+async function fetchCatalog(board) {
     try {
         // Cache buster to prevent stale data
-        const url = `${BASE_URL}/${config.fourChanBoard}/catalog.json?t=${Date.now()}`;
+        const url = `${BASE_URL}/${board}/catalog.json?t=${Date.now()}`;
         const response = await axios.get(url);
         return response.data;
     } catch (error) {
-        console.error('Error fetching 4chan catalog:', error.message);
+        console.error(`Error fetching 4chan catalog for /${board}/:`, error.message);
         return [];
     }
 }
 
-async function fetchThread(threadId) {
+async function fetchThread(board, threadId) {
     try {
-        const url = `${BASE_URL}/${config.fourChanBoard}/thread/${threadId}.json`;
+        const url = `${BASE_URL}/${board}/thread/${threadId}.json`;
         const response = await axios.get(url);
         return response.data.posts || [];
     } catch (error) {
-        console.error(`Error fetching thread ${threadId}:`, error.message);
+        console.error(`Error fetching thread /${board}/${threadId}:`, error.message);
         return null;
     }
 }
