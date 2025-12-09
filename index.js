@@ -6,6 +6,11 @@ const commandModule = require('./commands');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
+function log(message) {
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    console.log(`[${timestamp}] ${message}`);
+}
+
 async function processThread(board, threadId, channel) {
     const posts = await fourchan.fetchThread(board, threadId);
     if (!posts) return;
@@ -21,9 +26,8 @@ async function processThread(board, threadId, channel) {
 
             const fileUrl = `https://i.4cdn.org/${board}/${post.tim}${post.ext}`;
             const postUrl = `https://boards.4chan.org/${board}/thread/${threadId}#p${post.no}`;
-            console.log(`[${board}] Found new video: ${fileUrl}`);
+            log(`[${board}] Found new video: ${fileUrl}`);
 
-            // Strip HTML tags from comment for the embed
             let comment = post.com ? post.com.replace(/<br>/g, '\n').replace(/<[^>]*>?/gm, '') : '';
             if (comment.length > 200) comment = comment.substring(0, 197) + '...';
 
@@ -33,14 +37,13 @@ async function processThread(board, threadId, channel) {
                 .setDescription(comment || 'No comment')
                 .setAuthor({ name: post.name || 'Anonymous' })
                 .setFooter({ text: `/${board}/ - ${post.no}` })
-                .setColor(0x00FF00); // Green color
+                .setColor(0x00FF00);
 
-            // Check file size (25MB limit = 26214400 bytes)
+            // Check file size (25MB limit)
             const MAX_SIZE = 25 * 1024 * 1024;
 
             if (post.fsize > MAX_SIZE) {
-                console.log(`[${board}] File too large (${(post.fsize / 1024 / 1024).toFixed(2)}MB). Posting link.`);
-                // Post link directly, Discord will auto-embed
+                log(`[${board}] File too large (${(post.fsize / 1024 / 1024).toFixed(2)}MB). Posting link.`);
                 await channel.send({ content: `**File too large to upload:**\n${fileUrl}`, embeds: [embed] });
                 utils.markSeen(uniqueId);
             } else {
@@ -48,9 +51,15 @@ async function processThread(board, threadId, channel) {
                 if (fileData) {
                     try {
                         const attachment = new AttachmentBuilder(fileData, { name: `${post.tim}${post.ext}` });
+
+                        // Apply spoiler setting
+                        if (config.spoilerMode) {
+                            attachment.setSpoiler(true);
+                        }
+
                         await channel.send({ embeds: [embed], files: [attachment] });
                         utils.markSeen(uniqueId);
-                        console.log(`[${board}] Posted ${post.tim}${post.ext} to Discord.`);
+                        log(`[${board}] Posted ${post.tim}${post.ext} to Discord.`);
                     } catch (discordErr) {
                         console.error('Error posting to Discord:', discordErr.message);
                     }
@@ -71,18 +80,18 @@ async function runBotLoop() {
 
     const currentKeywords = config.keywords;
     if (currentKeywords.length === 0) {
-        console.log('No keywords set. Waiting...');
+        log('No keywords set. Waiting...');
         return;
     }
 
     const currentBoards = config.boards;
     if (currentBoards.length === 0) {
-        console.log('No boards set. Defaulting to gif.');
+        log('No boards set. Defaulting to gif.');
         config.addBoard('gif');
     }
 
     for (const board of currentBoards) {
-        console.log(`Fetching catalog for /${board}/...`);
+        log(`Fetching catalog for /${board}/...`);
         const catalog = await fourchan.fetchCatalog(board);
 
         const interestingThreads = [];
@@ -94,20 +103,35 @@ async function runBotLoop() {
             }
         }
 
-        console.log(`[${board}] Found ${interestingThreads.length} interesting threads.`);
+        log(`[${board}] Found ${interestingThreads.length} interesting threads.`);
 
         for (const threadId of interestingThreads) {
             await processThread(board, threadId, channel);
             await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
-        // Slight pause between boards
         await new Promise(resolve => setTimeout(resolve, 2000));
     }
 }
 
+// Graceful Shutdown
+const handleShutdown = () => {
+    log('Shutting down...');
+    utils.saveHistory(); // Force save history
+    process.exit(0);
+};
+
+process.on('SIGINT', handleShutdown);
+process.on('SIGTERM', handleShutdown);
+
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}!`);
+    log(`Logged in as ${client.user.tag}!`);
+
+    // Set Activity
+    client.user.setActivity(`Watching /${config.boards.join(', /')}/`, { type: 3 }); // Watching
+
+    // Prune history on startup
+    utils.pruneHistory();
 
     runBotLoop();
     setInterval(runBotLoop, config.pollingInterval);

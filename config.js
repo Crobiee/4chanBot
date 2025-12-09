@@ -107,5 +107,13 @@ module.exports = {
         return userId === process.env.DISCORD_OWNER_ID || state.admins.includes(userId);
     },
 
+    get spoilerMode() { return state.spoilerMode || false; },
+
+    setSpoilerMode(value) {
+        state.spoilerMode = value;
+        saveState();
+        return state.spoilerMode;
+    },
+
     pollingInterval: process.env.POLLING_INTERVAL ? parseInt(process.env.POLLING_INTERVAL) : 5 * 60 * 1000
 };

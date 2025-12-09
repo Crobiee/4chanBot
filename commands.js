@@ -36,7 +36,19 @@ const fourchanCommand = new SlashCommandBuilder()
                 subcommand
                     .setName('remove')
                     .setDescription('Remove a monitored board')
-                    .addStringOption(option => option.setName('board').setDescription('Board name').setRequired(true))));
+                    .addStringOption(option => option.setName('board').setDescription('Board name').setRequired(true))))
+    .addSubcommand(subcommand =>
+        subcommand
+            .setName('spoiler')
+            .setDescription('Configure spoiler mode')
+            .addStringOption(option =>
+                option.setName('setting')
+                    .setDescription('Enable or disable spoiler mode')
+                    .setRequired(true)
+                    .addChoices(
+                        { name: 'On', value: 'on' },
+                        { name: 'Off', value: 'off' }
+                    )));
 
 async function handleFourchanCommand(interaction) {
     if (!config.isAdmin(interaction.user.id)) {
@@ -86,10 +98,11 @@ async function handleFourchanCommand(interaction) {
         case 'list': {
             const keywords = config.keywords;
             const boards = config.boards;
+            const spoiler = config.spoilerMode ? 'ON' : 'OFF';
             const kwList = keywords.length > 0 ? keywords.join(', ') : 'None';
             const bdList = boards.length > 0 ? boards.join(', ') : 'None';
 
-            await interaction.reply({ content: `**Keywords:** ${kwList}\n**Boards:** ${bdList}`, ephemeral: true });
+            await interaction.reply({ content: `**Keywords:** ${kwList}\n**Boards:** ${bdList}\n**Spoiler Mode:** ${spoiler}`, ephemeral: true });
             break;
         }
         case 'addadmin': {
@@ -99,6 +112,13 @@ async function handleFourchanCommand(interaction) {
             } else {
                 await interaction.reply({ content: `User ID **${newAdminId}** is already an admin.`, ephemeral: true });
             }
+            break;
+        }
+        case 'spoiler': {
+            const setting = interaction.options.getString('setting');
+            const isEnabled = setting === 'on';
+            config.setSpoilerMode(isEnabled);
+            await interaction.reply({ content: `Spoiler mode is now **${isEnabled ? 'ON' : 'OFF'}**. Videos will ${isEnabled ? 'be hidden' : 'show normally'}.` });
             break;
         }
         default:
