@@ -33,28 +33,6 @@ This method automatically registers slash commands and handles restart policies.
 docker-compose up -d --build
 ```
 
-### Running Locally
-
-1.  Install dependencies:
-    ```bash
-    npm install
-    ```
-2.  Register commands (run once):
-    ```bash
-    npm run deploy
-    ```
-3.  Start the bot:
-    ```bash
-    node index.js
-    ```
-
-## Usage
-
-Use the `/4chan` slash command to manage the bot:
-
--   `/4chan add <keyword>`: Add a new keyword.
--   `/4chan list`: List keywords and boards.
--   `/4chan board add <board>`: Add a board to monitor (e.g. `w`, `wg`, `gif`).
 
 ## Permissions
 

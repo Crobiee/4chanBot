@@ -2,8 +2,9 @@ version: '3.8'
 
 services:
   4chanbot:
-    build: .
-    restart: always
+    image: ghcr.io/crobiee/4chanbot:latest
+    # build: .
+    restart: unless-stopped
     volumes:
       - ./data.json:/usr/src/app/data.json
       - ./history.json:/usr/src/app/history.json
