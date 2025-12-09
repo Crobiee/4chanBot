@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  thugbot:
+    build: .
+    restart: always
+    volumes:
+      - ./data.json:/usr/src/app/data.json
+      - ./history.json:/usr/src/app/history.json
+    env_file:
+      - .env
