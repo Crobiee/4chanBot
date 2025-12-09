@@ -30,7 +30,7 @@ A Discord bot that monitors 4chan boards (like `/gif/`, `/w/`, etc.) for threads
 This method automatically registers slash commands and handles restart policies.
 
 ```bash
-docker-compose up -d --build
+docker-compose up -d
 ```
 
 
