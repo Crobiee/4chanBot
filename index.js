@@ -4,6 +4,16 @@ const fourchan = require('./fourchan');
 const utils = require('./utils');
 const commandModule = require('./commands');
 
+// Helper to remove all HTML tags reliably (repeat regex until no more matches)
+function removeHtmlTags(input) {
+    let previous;
+    do {
+        previous = input;
+        input = input.replace(/<[^>]*>?/gm, '');
+    } while (input !== previous);
+    return input;
+}
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
 function log(message) {
@@ -28,7 +38,8 @@ async function processThread(board, threadId, channel) {
             const postUrl = `https://boards.4chan.org/${board}/thread/${threadId}#p${post.no}`;
             log(`[${board}] Found new video: ${fileUrl}`);
 
-            let comment = post.com ? post.com.replace(/<br>/g, '\n').replace(/<[^>]*>?/gm, '') : '';
+            let comment = post.com ? post.com.replace(/<br>/g, '\n') : '';
+            comment = removeHtmlTags(comment);
             if (comment.length > 200) comment = comment.substring(0, 197) + '...';
 
             const embed = new EmbedBuilder()
