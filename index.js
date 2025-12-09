@@ -83,7 +83,7 @@ client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
     runBotLoop();
-    setInterval(runBotLoop, 5 * 60 * 1000);
+    setInterval(runBotLoop, config.pollingInterval);
 });
 
 client.on('interactionCreate', async interaction => {

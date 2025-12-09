@@ -12,22 +12,31 @@ let state = {
 };
 
 // Load state
-if (fs.existsSync(DATA_FILE)) {
-    try {
-        const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-        const loaded = JSON.parse(raw);
-        state.keywords = loaded.keywords || [];
-        state.admins = loaded.admins || [];
-        state.boards = loaded.boards || ['gif'];
-    } catch (err) {
-        console.error('Error loading data.json:', err);
+try {
+    if (!fs.existsSync(DATA_FILE)) {
+        saveState(); // Create with defaults if missing
+    } else {
+        const stats = fs.statSync(DATA_FILE);
+        if (stats.isDirectory()) {
+            // Docker volume issue: user mounted a host path that didn't exist, so Docker made a dir.
+            // We cannot fix this from code easily without changing the path, but we can warn.
+            console.error('ERROR: data.json is a directory. If using Docker, ensure data.json exists on host or use a volume for the folder.');
+        } else {
+            const raw = fs.readFileSync(DATA_FILE, 'utf-8');
+            const loaded = JSON.parse(raw);
+            state.keywords = loaded.keywords || [];
+            state.admins = loaded.admins || [];
+            state.boards = loaded.boards || ['gif'];
+        }
     }
-} else {
-    // Migration: Attempt to load from legacy .env
-    if (process.env.KEYWORDS) {
-        state.keywords = process.env.KEYWORDS.split(',').map(k => k.trim());
-        saveState();
-    }
+} catch (err) {
+    console.error('Error loading data.json:', err);
+}
+
+// Migration check (if file was just created or empty)
+if (state.keywords.length === 0 && process.env.KEYWORDS) {
+    state.keywords = process.env.KEYWORDS.split(',').map(k => k.trim());
+    saveState();
 }
 
 function saveState() {
@@ -96,5 +105,7 @@ module.exports = {
 
     isAdmin(userId) {
         return userId === process.env.DISCORD_OWNER_ID || state.admins.includes(userId);
-    }
+    },
+
+    pollingInterval: process.env.POLLING_INTERVAL ? parseInt(process.env.POLLING_INTERVAL) : 5 * 60 * 1000
 };
