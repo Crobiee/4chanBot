@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, AttachmentBuilder, EmbedBuilder } = require('discord.js');
 const config = require('./config');
 const fourchan = require('./fourchan');
 const utils = require('./utils');
@@ -10,23 +10,50 @@ async function processThread(board, threadId, channel) {
     const posts = await fourchan.fetchThread(board, threadId);
     if (!posts) return;
 
+    // First post usually contains the subject
+    const op = posts[0];
+    const threadTitle = op.sub || `Thread ${threadId}`;
+
     for (const post of posts) {
         if (post.tim && post.ext && (post.ext === '.webm' || post.ext === '.mp4' || post.ext === '.gif')) {
             const uniqueId = `${board}-${threadId}-${post.no}`;
             if (utils.hasSeen(uniqueId)) continue; // Skip duplicates
 
             const fileUrl = `https://i.4cdn.org/${board}/${post.tim}${post.ext}`;
+            const postUrl = `https://boards.4chan.org/${board}/thread/${threadId}#p${post.no}`;
             console.log(`[${board}] Found new video: ${fileUrl}`);
 
-            const fileData = await utils.downloadFile(fileUrl);
-            if (fileData) {
-                try {
-                    const attachment = new AttachmentBuilder(fileData, { name: `${post.tim}${post.ext}` });
-                    await channel.send({ content: `Source: <https://boards.4chan.org/${board}/thread/${threadId}#p${post.no}>`, files: [attachment] });
-                    utils.markSeen(uniqueId);
-                    console.log(`[${board}] Posted ${post.tim}${post.ext} to Discord.`);
-                } catch (discordErr) {
-                    console.error('Error posting to Discord:', discordErr.message);
+            // Strip HTML tags from comment for the embed
+            let comment = post.com ? post.com.replace(/<br>/g, '\n').replace(/<[^>]*>?/gm, '') : '';
+            if (comment.length > 200) comment = comment.substring(0, 197) + '...';
+
+            const embed = new EmbedBuilder()
+                .setTitle(post.sub || threadTitle)
+                .setURL(postUrl)
+                .setDescription(comment || 'No comment')
+                .setAuthor({ name: post.name || 'Anonymous' })
+                .setFooter({ text: `/${board}/ - ${post.no}` })
+                .setColor(0x00FF00); // Green color
+
+            // Check file size (25MB limit = 26214400 bytes)
+            const MAX_SIZE = 25 * 1024 * 1024;
+
+            if (post.fsize > MAX_SIZE) {
+                console.log(`[${board}] File too large (${(post.fsize / 1024 / 1024).toFixed(2)}MB). Posting link.`);
+                // Post link directly, Discord will auto-embed
+                await channel.send({ content: `**File too large to upload:**\n${fileUrl}`, embeds: [embed] });
+                utils.markSeen(uniqueId);
+            } else {
+                const fileData = await utils.downloadFile(fileUrl);
+                if (fileData) {
+                    try {
+                        const attachment = new AttachmentBuilder(fileData, { name: `${post.tim}${post.ext}` });
+                        await channel.send({ embeds: [embed], files: [attachment] });
+                        utils.markSeen(uniqueId);
+                        console.log(`[${board}] Posted ${post.tim}${post.ext} to Discord.`);
+                    } catch (discordErr) {
+                        console.error('Error posting to Discord:', discordErr.message);
+                    }
                 }
             }
 
