@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  thugbot:
+  4chanbot:
     build: .
     restart: always
     volumes:
